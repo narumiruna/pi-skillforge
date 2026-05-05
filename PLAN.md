@@ -1,5 +1,3 @@
-# PLAN.md
-
 # pi-skillforge Plan
 
 ## Purpose
@@ -82,7 +80,9 @@ Large historical notes, debugging stories, or one-off failures belong in memory,
 * a place to store every observation from every task
 * a system that blindly trusts agent-generated learnings
 
-## Repository Structure
+## Pi Package Structure
+
+The repository follows Pi package conventions. Extension entry files live under `extensions/`; reusable implementation modules live under `lib/`.
 
 ```txt
 pi-skillforge/
@@ -116,6 +116,16 @@ pi-skillforge/
     └── validate.test.ts
 ```
 
+Package manifest:
+
+```json
+{
+	"pi": {
+		"extensions": ["./extensions"]
+	}
+}
+```
+
 ## Runtime Project Files
 
 Inside a user project, the extension stores memory under:
@@ -139,8 +149,6 @@ These files are project-local by default.
 
 A non-obvious project-specific pitfall that caused an error or wasted effort.
 
-Example:
-
 ```yaml
 type: gotcha
 ```
@@ -148,8 +156,6 @@ type: gotcha
 ### Decision
 
 A confirmed project decision that affects future implementation.
-
-Example:
 
 ```yaml
 type: decision
@@ -159,13 +165,13 @@ type: decision
 
 A reusable successful workflow or implementation pattern.
 
-Example:
-
 ```yaml
 type: pattern
 ```
 
 ## Memory Entry Schema
+
+Memory entries should be human-reviewable YAML or Markdown-with-frontmatter files, validated against `schemas/memory.schema.json`.
 
 ```yaml
 id: python-ruff-import-order-001
@@ -194,8 +200,91 @@ trigger:
   - Editing Python imports.
 
 symptom:
-  - `ruff check --fix` keeps rewriting import groups.
+  - `ruff check --fix` keeps rewriting import groups unexpectedly.
 
 root_cause:
-  - Project c
+  - The project has a local import-grouping convention that differs from the default Ruff formatter behavior.
+
+fix:
+  - Check `pyproject.toml` before changing import organization.
+  - Prefer the project's configured import sections over generic examples.
+
+verification:
+  - `npm run check` or the project-specific quality command passed after preserving the local convention.
 ```
+
+## Retrieval Model
+
+Retrieval should be conservative:
+
+1. Detect active skills from Pi's loaded skill context when available.
+2. Match memory entries by `skills` and `compatible_skills`.
+3. Exclude entries matching `excluded_skills`.
+4. Further filter by file path, language, tool, and user prompt terms.
+5. Inject only the smallest relevant summary into the agent context.
+
+A retrieved memory should explain what to do now, not replay the full historical debugging story.
+
+## Capture Model
+
+Memory capture should be explicit and reviewable. Initial commands/tools should support:
+
+* drafting a gotcha from the current session
+* validating required schema fields
+* storing the entry under `.pi-skillforge/memory/`
+* updating `index.json`
+
+The extension should not silently mine every conversation into memory.
+
+## Promotion Model
+
+Promotion turns repeated, confirmed memory into proposed skill changes.
+
+Promotion candidates should require:
+
+* multiple hits or strong manual confirmation
+* stable scope
+* clear prevention value
+* no conflict with excluded skills
+* a short patch that keeps `SKILL.md` lean
+
+Promotion output should be a patch proposal, not an automatic rewrite. Direct skill modification requires explicit user approval.
+
+## Implementation Milestones
+
+### 0. Package scaffold
+
+* Pi package manifest using `extensions/`
+* `/skillforge` command to verify loading
+* Biome, TypeScript, pre-commit, and justfile release workflow
+
+### 1. Storage and validation
+
+* Define `memory.schema.json`
+* Implement project-local `.pi-skillforge/` storage helpers
+* Add validation and tests
+
+### 2. Capture workflow
+
+* Add command/tool to draft gotchas, decisions, and patterns
+* Require trigger, symptom, root cause, fix, verification, scope, and confidence
+* Persist reviewed entries
+
+### 3. Retrieval workflow
+
+* Read active skill metadata from Pi context where available
+* Filter by skill/scope/exclusions
+* Inject concise memory summaries before agent start
+
+### 4. Promotion workflow
+
+* Detect repeated stable entries
+* Generate `templates/skill-patch.md` proposals
+* Append decisions to `promotion-log.md`
+
+### 5. Hardening
+
+* Conflict detection
+* stale-entry review
+* registry migration/versioning
+* package docs and examples

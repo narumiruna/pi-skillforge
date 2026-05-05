@@ -37,6 +37,24 @@ pre-commit:
 pack:
     npm pack --dry-run
 
+# Verify the published npm package metadata
+verify-npm:
+    npm access get status {{package}}
+    npm dist-tag ls {{package}}
+    npm view {{package}} version
+
+# Install the published package through pi
+install-npm:
+    pi install npm:{{package}}
+
+# Try this working tree as a temporary pi package
+try-local:
+    pi -e .
+
+# Try the published npm package as a temporary pi package
+try-npm:
+    pi -e npm:{{package}}
+
 # Publish the current package.json version to npm
 publish:
     npm pack --dry-run
@@ -48,7 +66,7 @@ publish:
     @echo
     @echo "If npm view or pi install still returns 404, wait a few minutes for npm registry metadata to propagate."
 
-# Bump package.json version without creating a git tag
+# Bump package.json and package-lock.json without creating a git tag
 bump part="patch":
     npm version {{part}} --no-git-tag-version
 
@@ -56,7 +74,7 @@ bump part="patch":
 # Run this after `just publish` succeeds.
 tag:
     @version="$(node -e 'const p = JSON.parse(require("fs").readFileSync("package.json", "utf8")); process.stdout.write(p.version)')"; \
-    git add package.json README.md justfile; \
+    git add package.json package-lock.json README.md PLAN.md justfile; \
     git commit -m "chore(release): $${version}"; \
     git tag "v$${version}"; \
     git push origin main; \
@@ -65,10 +83,11 @@ tag:
 # Full release flow: bump, publish, then commit/tag/push
 release part="patch":
     npm version {{part}} --no-git-tag-version
+    npm run check
     npm pack --dry-run
     npm publish --access public
     @version="$(node -e 'const p = JSON.parse(require("fs").readFileSync("package.json", "utf8")); process.stdout.write(p.version)')"; \
-    git add package.json README.md justfile; \
+    git add package.json package-lock.json README.md PLAN.md justfile; \
     git commit -m "chore(release): $${version}"; \
     git tag "v$${version}"; \
     git push origin main; \

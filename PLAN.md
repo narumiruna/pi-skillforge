@@ -2,9 +2,9 @@
 
 ## Purpose
 
-`pi-skillforge` is a Pi extension for improving agent skills through verified project memory.
+`pi-skillforge` is a Pi extension for improving agent skills through verified global memory.
 
-It captures recurring gotchas, fixes, decisions, and workflow learnings from real coding-agent sessions, stores them as structured memory, retrieves only relevant entries for active skills, and promotes stable repeated learnings into skill improvements.
+It captures recurring gotchas, fixes, decisions, and workflow learnings from real coding-agent sessions, stores them as structured project-aware memory under Pi's global agent directory, retrieves only relevant entries for active skills, and promotes stable repeated learnings into reviewed skill patch proposals.
 
 The goal is not to make skills larger. The goal is to make skills more accurate, less stale, and better grounded in actual project experience.
 
@@ -59,9 +59,9 @@ Each memory entry should include:
 * scope
 * confidence
 
-### 4. Promotion instead of automatic rewriting
+### 4. Automatic promotion, approved application
 
-The extension may propose skill patches, but direct skill modification should require explicit approval.
+The extension may automatically generate skill patch proposals from stable memory, but direct `SKILL.md` modification must require explicit user approval.
 
 ### 5. Keep skills lean
 
@@ -128,6 +128,19 @@ Package manifest:
 }
 ```
 
+## Current v1 Behavior
+
+Normal operation is automatic after the package is loaded:
+
+1. `before_agent_start` retrieves relevant memories from the current project partition and global partition.
+2. Retrieved memory is injected as hidden concise context.
+3. The agent may call `skillforge_capture_memory` automatically when a verified reusable gotcha, decision, or pattern has concrete evidence.
+4. Memory save and retrieval both trigger promotion checks.
+5. Eligible memories create pending skill patch proposal files automatically.
+6. The only user-facing command is `/skillforge <skill-name>`, which reviews pending proposals and applies them only after confirmation.
+
+There are intentionally no user commands for init, capture, retrieve, validate, reindex, or promote.
+
 ## Runtime Files
 
 The extension stores all memory and promotion artifacts under Pi's global agent directory:
@@ -154,6 +167,8 @@ ${PI_CODING_AGENT_DIR:-~/.pi/agent}/skillforge/
 ```
 
 There is no repo-local `.pi-skillforge/` store. Project-specific memories are isolated by `<project-id>` inside the global store. Retrieval reads the current project partition and the global partition by default, with conservative filtering to avoid memory leaking into unrelated tasks.
+
+`<project-id>` is derived from the git remote URL when available, otherwise the git root path, otherwise the current working directory path. The visible form is `<folder-name>-<8-char-hash>`.
 
 ## Memory Types
 
@@ -280,7 +295,9 @@ MVP promotion eligibility:
 * `hits >= 3`
 * at least one target `skills` entry
 
-Promotion is checked after memory save and after retrieval of relevant memories. The future target is evidence-based hit accounting: memory should gain promotion evidence only when it was retrieved and the task was successfully verified or the user confirmed it helped.
+Promotion is checked after memory save and after retrieval of relevant memories. Proposal files are JSON records under `promotions/` and include target skill, target path when known, source memory evidence, proposed guidance, rationale, verification, and status.
+
+The future target is evidence-based hit accounting: memory should gain promotion evidence only when it was retrieved and the task was successfully verified or the user confirmed it helped.
 
 ## Implementation Milestones
 
@@ -318,7 +335,9 @@ Promotion is checked after memory save and after retrieval of relevant memories.
 
 ### 5. Hardening
 
-* Conflict detection
+* Conflict detection for proposal application
 * stale-entry review
 * registry migration/versioning
-* package docs and examples
+* automated tests for storage, retrieval, capture, and promotion
+* evidence-based hit accounting after verified task success
+* better patch placement inside existing `SKILL.md` sections instead of appending a generated section

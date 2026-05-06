@@ -266,9 +266,9 @@ Promotion output should be a patch proposal, not an automatic rewrite. Direct sk
 
 ### 2. Capture workflow
 
-* Add command/tool to draft gotchas, decisions, and patterns
-* Require trigger, symptom, root cause, fix, verification, scope, and confidence
-* Persist reviewed entries
+* Add command/tool to draft gotchas, decisions, and patterns ✅
+* Require trigger, symptom, root cause, fix, verification, scope, and confidence ✅
+* Persist reviewed entries ✅
 
 ### 3. Retrieval workflow
 

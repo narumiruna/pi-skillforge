@@ -122,10 +122,10 @@ function parseScalar(value: string): unknown {
 	if (value === "true") return true;
 	if (value === "false") return false;
 	if (value.startsWith("[") && value.endsWith("]")) return parseInlineArray(value);
-	if (
-		(value.startsWith('"') && value.endsWith('"')) ||
-		(value.startsWith("'") && value.endsWith("'"))
-	) {
+	if (value.startsWith('"') && value.endsWith('"')) {
+		return JSON.parse(value);
+	}
+	if (value.startsWith("'") && value.endsWith("'")) {
 		return value.slice(1, -1);
 	}
 	if (/^-?\d+$/.test(value)) return Number.parseInt(value, 10);

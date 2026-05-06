@@ -1,29 +1,32 @@
 # Skill patch proposal
 
-## Target skill
+Generated proposal example:
 
-`pi-extensions`
-
-## Memory evidence
-
-- `pi-extension-imports-use-js-suffix` — Repeated TypeScript module-resolution failures were avoided by using `.js` suffixes for relative imports in NodeNext Pi packages.
-
-## Proposed patch
-
-```diff
---- a/SKILL.md
-+++ b/SKILL.md
-@@
- When adding TypeScript modules to a Pi package:
-+- With NodeNext ESM, write relative imports with runtime `.js` suffixes, even when the source file is `.ts`.
+```json
+{
+	"version": 1,
+	"id": "pi-extensions__pi-extension-imports-use-js-suffix",
+	"status": "pending",
+	"partition": "project",
+	"project_id": "pi-skillforge-a1b2c3d4",
+	"target_skill": "pi-extensions",
+	"target_path": "/home/user/.agents/skills/pi-extensions/SKILL.md",
+	"source_memory_id": "pi-extension-imports-use-js-suffix",
+	"source_memory_path": "~/.pi/agent/skillforge/memory/projects/pi-skillforge-a1b2c3d4/gotchas/pi-extension-imports-use-js-suffix.md",
+	"memory_title": "Use .js suffixes for NodeNext Pi package imports",
+	"memory_type": "gotcha",
+	"proposed_guidance": "- With NodeNext ESM, write relative imports with runtime .js suffixes, even when the source file is .ts.",
+	"rationale": "gotcha memory 'Use .js suffixes for NodeNext Pi package imports' is confirmed, has 3 hit(s), and targets the pi-extensions skill.",
+	"verification": [
+		"TypeScript typecheck and Pi package loading passed after using .js suffixes."
+	],
+	"created_at": "2026-05-06",
+	"updated_at": "2026-05-06"
+}
 ```
 
-## Rationale
+Review and apply with:
 
-The guidance is short, operational, and prevents a repeat package-load failure.
-
-## Approval
-
-- [ ] User approved applying this patch
-- [ ] Patch applied
-- [ ] Promotion logged in `.pi-skillforge/promotion-log.md`
+```text
+/skillforge pi-extensions
+```

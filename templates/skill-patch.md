@@ -1,29 +1,38 @@
 # Skill patch proposal
 
-## Target skill
+Generated proposals are stored as JSON files under:
 
-`replace-with-skill-name`
-
-## Memory evidence
-
-- `replace-with-memory-id` — Replace with concise evidence summary.
-
-## Proposed patch
-
-```diff
---- a/SKILL.md
-+++ b/SKILL.md
-@@
--Replace with old text.
-+Replace with concise operational guidance.
+```txt
+${PI_CODING_AGENT_DIR:-~/.pi/agent}/skillforge/promotions/
 ```
 
-## Rationale
+A proposal records the target skill, target `SKILL.md` path when known, source memory evidence, proposed guidance, and status.
 
-Explain why this belongs in the skill instead of remaining only project memory.
+Example shape:
 
-## Approval
+```json
+{
+	"version": 1,
+	"id": "python-typer__typer-mutable-option-default-001",
+	"status": "pending",
+	"partition": "project",
+	"project_id": "example-project-a1b2c3d4",
+	"target_skill": "python-typer",
+	"target_path": "/home/user/.agents/skills/python-typer/SKILL.md",
+	"source_memory_id": "typer-mutable-option-default-001",
+	"source_memory_path": "~/.pi/agent/skillforge/memory/projects/example-project-a1b2c3d4/gotchas/typer-mutable-option-default-001.md",
+	"memory_title": "Avoid mutable Typer option defaults",
+	"memory_type": "gotcha",
+	"proposed_guidance": "- Avoid mutable defaults such as [] or {} in Typer options. Use None and initialize inside the command body.",
+	"rationale": "gotcha memory 'Avoid mutable Typer option defaults' is confirmed, has 3 hit(s), and targets the python-typer skill.",
+	"verification": ["pytest passed after replacing [] defaults with None."],
+	"created_at": "2026-05-06",
+	"updated_at": "2026-05-06"
+}
+```
 
-- [ ] User approved applying this patch
-- [ ] Patch applied
-- [ ] Promotion logged in `.pi-skillforge/promotion-log.md`
+Users review and apply pending proposals with:
+
+```text
+/skillforge <skill-name>
+```

@@ -94,6 +94,7 @@ pi-skillforge/
 ├── lib/
 │   ├── capture.ts
 │   ├── parse.ts
+│   ├── promotion.ts
 │   ├── retrieve.ts
 │   ├── serialize.ts
 │   ├── storage.ts
@@ -127,35 +128,32 @@ Package manifest:
 }
 ```
 
-## Runtime Project Files
+## Runtime Files
 
-Inside a user project, the extension stores memory under:
-
-```txt
-.pi-skillforge/
-├── memory/
-│   ├── gotchas/
-│   ├── decisions/
-│   └── patterns/
-├── registry.yaml
-├── index.json
-└── promotion-log.md
-```
-
-These files are project-local by default. Global memory uses Pi's agent directory:
+The extension stores all memory and promotion artifacts under Pi's global agent directory:
 
 ```txt
 ${PI_CODING_AGENT_DIR:-~/.pi/agent}/skillforge/
 ├── memory/
-│   ├── gotchas/
-│   ├── decisions/
-│   └── patterns/
+│   ├── global/
+│   │   ├── gotchas/
+│   │   ├── decisions/
+│   │   └── patterns/
+│   └── projects/
+│       └── <project-id>/
+│           ├── gotchas/
+│           ├── decisions/
+│           └── patterns/
+├── promotions/
+│   ├── global/
+│   └── projects/
+│       └── <project-id>/
 ├── registry.yaml
 ├── index.json
 └── promotion-log.md
 ```
 
-Retrieval reads project-local and global memory by default, with conservative filtering to avoid global memories leaking into unrelated tasks.
+There is no repo-local `.pi-skillforge/` store. Project-specific memories are isolated by `<project-id>` inside the global store. Retrieval reads the current project partition and the global partition by default, with conservative filtering to avoid memory leaking into unrelated tasks.
 
 ## Memory Types
 
@@ -232,7 +230,7 @@ verification:
 Retrieval should be conservative:
 
 1. Detect active skills from Pi's loaded skill context when available. ✅
-2. Read project-local `.pi-skillforge/` and global `${PI_CODING_AGENT_DIR:-~/.pi/agent}/skillforge/` memories. ✅
+2. Read the current project partition and global partition under `${PI_CODING_AGENT_DIR:-~/.pi/agent}/skillforge/`. ✅
 3. Match memory entries by `skills` and `compatible_skills`. ✅
 4. Exclude entries matching `excluded_skills`. ✅
 5. Further filter by file path, language, tool, and user prompt terms. ✅
@@ -243,23 +241,24 @@ Current implementation notes:
 * `draft` and `deprecated` memories are ignored.
 * Skill-scoped memories require a `skills` or `compatible_skills` match when active skills are available.
 * A skill match alone is not enough; prompt/scope terms must also match to avoid broad injection.
-* `/skillforge retrieve <prompt>` and `/skillforge search <prompt>` preview matching memory ids, scopes, scores, reasons, paths, and fix lines.
-* Retrieval defaults to `--all`; use `--local` or `--global` to debug one store.
+* Retrieval is automatic before each agent turn.
+* The only user-facing command is `/skillforge <skill-name>`, which reviews and optionally applies pending skill patches.
 
 A retrieved memory should explain what to do now, not replay the full historical debugging story.
 
 ## Capture Model
 
-Memory capture should be explicit and reviewable. Implemented commands/tools support:
+Memory capture is agent-mediated and automatic, but conservative. The `skillforge_capture_memory` tool may be used when the agent has verified a reusable gotcha, decision, or pattern with concrete evidence.
 
-* drafting gotchas, decisions, and patterns with `/skillforge capture <type>` ✅
+Implemented capture support:
+
 * validating required schema fields ✅
 * rejecting unreplaced template placeholders before saving ✅
-* storing the entry under `.pi-skillforge/memory/` ✅
+* storing entries under the global project/global partitions ✅
 * updating `index.json` ✅
-* explicit agent-tool capture via `skillforge_capture_memory` when the user asks to remember verified memory ✅
+* automatic agent-tool capture via `skillforge_capture_memory` for verified reusable memory ✅
 
-The extension should not silently mine every conversation into memory.
+The extension should not blindly mine every conversation into memory. It should capture only confirmed learnings with prevention value, narrow scope, and explicit verification evidence.
 
 ## Promotion Model
 
@@ -273,40 +272,49 @@ Promotion candidates should require:
 * no conflict with excluded skills
 * a short patch that keeps `SKILL.md` lean
 
-Promotion output should be a patch proposal, not an automatic rewrite. Direct skill modification requires explicit user approval.
+Promotion output is a patch proposal. Proposal generation is automatic; applying a proposal to `SKILL.md` requires explicit user approval via `/skillforge <skill-name>`.
+
+MVP promotion eligibility:
+
+* `confidence: confirmed`
+* `hits >= 3`
+* at least one target `skills` entry
+
+Promotion is checked after memory save and after retrieval of relevant memories. The future target is evidence-based hit accounting: memory should gain promotion evidence only when it was retrieved and the task was successfully verified or the user confirmed it helped.
 
 ## Implementation Milestones
 
 ### 0. Package scaffold
 
 * Pi package manifest using `extensions/` ✅
-* `/skillforge` command to verify loading ✅
+* `/skillforge <skill-name>` command to review and approve generated skill patches ✅
 * Biome, TypeScript, pre-commit, and justfile release workflow ✅
 
 ### 1. Storage and validation
 
 * Define `memory.schema.json` ✅
-* Implement project-local `.pi-skillforge/` storage helpers ✅
+* Implement global-only project-aware storage helpers ✅
 * Add validation and tests (validation implemented; automated tests still pending)
 
 ### 2. Capture workflow
 
-* Add command/tool to draft gotchas, decisions, and patterns ✅
+* Add automatic agent tool capture for gotchas, decisions, and patterns ✅
 * Require trigger, symptom, root cause, fix, verification, scope, and confidence ✅
-* Persist reviewed entries ✅
+* Persist verified entries ✅
 
 ### 3. Retrieval workflow
 
 * Read active skill metadata from Pi context where available ✅
 * Filter by skill/scope/exclusions ✅
 * Inject concise memory summaries before agent start ✅
-* Add retrieval preview/debug command ✅
+* Trigger promotion checks for retrieved memories ✅
 
 ### 4. Promotion workflow
 
-* Detect repeated stable entries
-* Generate `templates/skill-patch.md` proposals
-* Append decisions to `promotion-log.md`
+* Detect repeated stable entries ✅
+* Generate skill patch proposals ✅
+* Append decisions to `promotion-log.md` ✅
+* Apply proposals only after `/skillforge <skill-name>` approval ✅
 
 ### 5. Hardening
 

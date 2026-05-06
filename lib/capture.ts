@@ -2,8 +2,8 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseMemoryText } from "./parse.js";
 import { formatMemoryMarkdown } from "./serialize.js";
-import type { StoreScope } from "./storage.js";
-import { ensureStore, memoryDirectoryForType, rebuildIndex } from "./storage.js";
+import type { MemoryPartition } from "./storage.js";
+import { ensureStore, formatDisplayPath, memoryDirectoryForType, rebuildIndex } from "./storage.js";
 import type {
 	ConfidenceLevel,
 	MemoryEntry,
@@ -99,7 +99,7 @@ export function parseReviewedMemory(text: string, filename = "memory.md"): Memor
 export async function saveMemoryEntry(
 	cwd: string,
 	entry: MemoryEntry,
-	options: { overwrite?: boolean; scope?: StoreScope } = {},
+	options: { overwrite?: boolean; partition?: MemoryPartition } = {},
 ): Promise<SaveMemoryResult> {
 	assertReviewedMemory(entry);
 	const validation = validateMemoryEntry(entry);
@@ -107,16 +107,15 @@ export async function saveMemoryEntry(
 		throw new Error(validation.errors.join("; "));
 	}
 
-	const paths = await ensureStore(cwd, options.scope ?? "local");
+	const paths = await ensureStore(cwd, options.partition ?? "project");
 	const memoryDir = memoryDirectoryForType(paths, validation.entry.type);
 	const memoryPath = path.join(memoryDir, `${validation.entry.id}.md`);
 	await writeFile(memoryPath, formatMemoryMarkdown(validation.entry), {
 		encoding: "utf8",
 		flag: options.overwrite ? "w" : "wx",
 	});
-	const index = await rebuildIndex(cwd, paths.scope);
-	const savedPath = paths.scope === "local" ? path.relative(cwd, memoryPath) : memoryPath;
-	return { entry: validation.entry, path: savedPath, index };
+	const index = await rebuildIndex(cwd);
+	return { entry: validation.entry, path: formatDisplayPath(memoryPath), index };
 }
 
 export function assertReviewedMemory(entry: MemoryEntry): void {

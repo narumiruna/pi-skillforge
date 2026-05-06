@@ -6,6 +6,7 @@ import {
 	parseReviewedMemory,
 	saveMemoryEntry,
 } from "../lib/capture.js";
+import type { RetrievedMemory } from "../lib/retrieve.js";
 import { formatRetrievedMemories, retrieveMemories } from "../lib/retrieve.js";
 import { formatMemoryMarkdown } from "../lib/serialize.js";
 import {
@@ -174,6 +175,15 @@ export default function skillforgeExtension(pi: ExtensionAPI) {
 					return;
 				}
 
+				if (command.action === "retrieve") {
+					const memories = await retrieveMemories(ctx.cwd, {
+						prompt: command.prompt,
+						limit: 10,
+					});
+					ctx.ui.notify(formatRetrieveReport(command.prompt, memories), "info");
+					return;
+				}
+
 				if (command.action === "validate") {
 					await ensureStore(ctx.cwd);
 					const reports = await validateStoredMemories(ctx.cwd);
@@ -222,12 +232,19 @@ type SkillforgeCommand =
 	| { action: "init" }
 	| { action: "validate" }
 	| { action: "reindex" }
+	| { action: "retrieve"; prompt: string }
 	| { action: "capture"; type: MemoryType };
 
 function parseCommand(args: string | undefined): SkillforgeCommand {
-	const [action, type] = (args ?? "").trim().split(/\s+/);
+	const trimmed = (args ?? "").trim();
+	const [action, type] = trimmed.split(/\s+/);
+	const rest = trimmed.slice(action?.length ?? 0).trim();
 	if (action === "init" || action === "validate" || action === "reindex") return { action };
 	if (action === "capture") return { action, type: parseMemoryType(type) };
+	if (action === "retrieve" || action === "search") {
+		if (!rest) throw new Error("Usage: /skillforge retrieve <prompt terms>");
+		return { action: "retrieve", prompt: rest };
+	}
 	return { action: "status" };
 }
 
@@ -257,6 +274,23 @@ function formatInvalidReports(reports: Array<{ path: string; errors: string[] }>
 		.slice(0, 5)
 		.map((report) => `- ${report.path}: ${report.errors.join("; ")}`)
 		.join("\n");
+}
+
+function formatRetrieveReport(prompt: string, memories: RetrievedMemory[]): string {
+	if (memories.length === 0) {
+		return `No pi-skillforge memories matched: ${prompt}`;
+	}
+
+	const lines = [`pi-skillforge retrieval preview for: ${prompt}`];
+	for (const memory of memories) {
+		lines.push(
+			`- ${memory.entry.id} [${memory.entry.type}] score=${memory.score} reasons=${memory.reasons.join(",") || "none"}`,
+		);
+		lines.push(`  title: ${memory.entry.title}`);
+		lines.push(`  path: ${memory.path}`);
+		lines.push(`  fix: ${memory.entry.fix[0] ?? "(none)"}`);
+	}
+	return lines.join("\n");
 }
 
 function formatError(error: unknown): string {

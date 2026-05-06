@@ -1,0 +1,30 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://github.com/narumiruna/pi-skillforge/schemas/skill-registry.schema.json",
+	"title": "pi-skillforge skill registry",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["version", "skills"],
+	"properties": {
+		"version": { "const": 1 },
+		"skills": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["name"],
+				"properties": {
+					"name": { "type": "string", "minLength": 1 },
+					"aliases": {
+						"type": "array",
+						"items": { "type": "string" }
+					},
+					"paths": {
+						"type": "array",
+						"items": { "type": "string" }
+					}
+				}
+			}
+		}
+	}
+}

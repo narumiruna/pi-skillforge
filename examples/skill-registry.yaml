@@ -1,0 +1,7 @@
+version: 1
+skills:
+  - name: pi-extensions
+    aliases:
+      - pi package development
+    paths:
+      - /home/example/.agents/skills/pi-extensions/SKILL.md

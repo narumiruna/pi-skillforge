@@ -260,9 +260,9 @@ Promotion output should be a patch proposal, not an automatic rewrite. Direct sk
 
 ### 1. Storage and validation
 
-* Define `memory.schema.json`
-* Implement project-local `.pi-skillforge/` storage helpers
-* Add validation and tests
+* Define `memory.schema.json` ✅
+* Implement project-local `.pi-skillforge/` storage helpers ✅
+* Add validation and tests (validation implemented; automated tests still pending)
 
 ### 2. Capture workflow
 

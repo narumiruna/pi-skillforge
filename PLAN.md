@@ -142,7 +142,20 @@ Inside a user project, the extension stores memory under:
 └── promotion-log.md
 ```
 
-These files are project-local by default.
+These files are project-local by default. Global memory uses Pi's agent directory:
+
+```txt
+${PI_CODING_AGENT_DIR:-~/.pi/agent}/skillforge/
+├── memory/
+│   ├── gotchas/
+│   ├── decisions/
+│   └── patterns/
+├── registry.yaml
+├── index.json
+└── promotion-log.md
+```
+
+Retrieval reads project-local and global memory by default, with conservative filtering to avoid global memories leaking into unrelated tasks.
 
 ## Memory Types
 
@@ -219,17 +232,19 @@ verification:
 Retrieval should be conservative:
 
 1. Detect active skills from Pi's loaded skill context when available. ✅
-2. Match memory entries by `skills` and `compatible_skills`. ✅
-3. Exclude entries matching `excluded_skills`. ✅
-4. Further filter by file path, language, tool, and user prompt terms. ✅
-5. Inject only the smallest relevant summary into the agent context. ✅
+2. Read project-local `.pi-skillforge/` and global `${PI_CODING_AGENT_DIR:-~/.pi/agent}/skillforge/` memories. ✅
+3. Match memory entries by `skills` and `compatible_skills`. ✅
+4. Exclude entries matching `excluded_skills`. ✅
+5. Further filter by file path, language, tool, and user prompt terms. ✅
+6. Inject only the smallest relevant summary into the agent context. ✅
 
 Current implementation notes:
 
 * `draft` and `deprecated` memories are ignored.
 * Skill-scoped memories require a `skills` or `compatible_skills` match when active skills are available.
 * A skill match alone is not enough; prompt/scope terms must also match to avoid broad injection.
-* `/skillforge retrieve <prompt>` and `/skillforge search <prompt>` preview matching memory ids, scores, reasons, paths, and fix lines.
+* `/skillforge retrieve <prompt>` and `/skillforge search <prompt>` preview matching memory ids, scopes, scores, reasons, paths, and fix lines.
+* Retrieval defaults to `--all`; use `--local` or `--global` to debug one store.
 
 A retrieved memory should explain what to do now, not replay the full historical debugging story.
 

@@ -6,9 +6,10 @@ import {
 	parseReviewedMemory,
 	saveMemoryEntry,
 } from "../lib/capture.js";
-import type { RetrievedMemory } from "../lib/retrieve.js";
+import type { RetrievedMemory, RetrieveScope } from "../lib/retrieve.js";
 import { formatRetrievedMemories, retrieveMemories } from "../lib/retrieve.js";
 import { formatMemoryMarkdown } from "../lib/serialize.js";
+import type { StoreScope } from "../lib/storage.js";
 import {
 	ensureStore,
 	readIndex,
@@ -53,6 +54,7 @@ interface CaptureToolParams {
 	fix: string[];
 	verification: string[];
 	overwrite?: boolean;
+	store_scope?: StoreScope;
 }
 
 export default function skillforgeExtension(pi: ExtensionAPI) {
@@ -109,11 +111,19 @@ export default function skillforgeExtension(pi: ExtensionAPI) {
 			fix: stringListSchema,
 			verification: stringListSchema,
 			overwrite: Type.Optional(Type.Boolean()),
+			store_scope: Type.Optional(
+				Type.Union([Type.Literal("local"), Type.Literal("global")], {
+					description: "Where to store the memory. Defaults to local project storage.",
+				}),
+			),
 		}),
 		async execute(_toolCallId, params: CaptureToolParams, _signal, _onUpdate, ctx) {
 			try {
 				const entry = createMemoryEntry(params);
-				const result = await saveMemoryEntry(ctx.cwd, entry, { overwrite: params.overwrite });
+				const result = await saveMemoryEntry(ctx.cwd, entry, {
+					overwrite: params.overwrite,
+					scope: params.store_scope ?? "local",
+				});
 				return {
 					content: [
 						{
@@ -140,10 +150,10 @@ export default function skillforgeExtension(pi: ExtensionAPI) {
 
 			try {
 				if (command.action === "init") {
-					await ensureStore(ctx.cwd);
-					const index = await rebuildIndex(ctx.cwd);
+					await ensureStore(ctx.cwd, command.scope);
+					const index = await rebuildIndex(ctx.cwd, command.scope);
 					ctx.ui.notify(
-						`pi-skillforge initialized (${index.entries.length} memories indexed).`,
+						`pi-skillforge ${command.scope} store initialized (${index.entries.length} memories indexed).`,
 						"info",
 					);
 					return;
@@ -167,9 +177,9 @@ export default function skillforgeExtension(pi: ExtensionAPI) {
 						return;
 					}
 
-					const result = await saveMemoryEntry(ctx.cwd, entry);
+					const result = await saveMemoryEntry(ctx.cwd, entry, { scope: command.scope });
 					ctx.ui.notify(
-						`Saved ${result.entry.type} memory ${result.entry.id} to ${result.path}.`,
+						`Saved ${command.scope} ${result.entry.type} memory ${result.entry.id} to ${result.path}.`,
 						"info",
 					);
 					return;
@@ -179,19 +189,23 @@ export default function skillforgeExtension(pi: ExtensionAPI) {
 					const memories = await retrieveMemories(ctx.cwd, {
 						prompt: command.prompt,
 						limit: 10,
+						scope: command.scope,
 					});
 					ctx.ui.notify(formatRetrieveReport(command.prompt, memories), "info");
 					return;
 				}
 
 				if (command.action === "validate") {
-					await ensureStore(ctx.cwd);
-					const reports = await validateStoredMemories(ctx.cwd);
+					await ensureStore(ctx.cwd, command.scope);
+					const reports = await validateStoredMemories(ctx.cwd, command.scope);
 					const invalid = reports.filter((report) => !report.valid);
-					await rebuildIndex(ctx.cwd);
+					await rebuildIndex(ctx.cwd, command.scope);
 
 					if (invalid.length === 0) {
-						ctx.ui.notify(`pi-skillforge validated ${reports.length} memory file(s).`, "info");
+						ctx.ui.notify(
+							`pi-skillforge validated ${reports.length} ${command.scope} memory file(s).`,
+							"info",
+						);
 						return;
 					}
 
@@ -203,21 +217,24 @@ export default function skillforgeExtension(pi: ExtensionAPI) {
 				}
 
 				if (command.action === "reindex") {
-					const index = await rebuildIndex(ctx.cwd);
+					const index = await rebuildIndex(ctx.cwd, command.scope);
 					ctx.ui.notify(
-						`pi-skillforge indexed ${index.entries.length} valid memory file(s).`,
+						`pi-skillforge indexed ${index.entries.length} valid ${command.scope} memory file(s).`,
 						"info",
 					);
 					return;
 				}
 
-				const exists = await storeExists(ctx.cwd);
-				const index = await readIndex(ctx.cwd);
-				const count = index?.entries.length ?? 0;
+				const localExists = await storeExists(ctx.cwd, "local");
+				const globalExists = await storeExists(ctx.cwd, "global");
+				const localIndex = await readIndex(ctx.cwd, "local");
+				const globalIndex = await readIndex(ctx.cwd, "global");
+				const localCount = localIndex?.entries.length ?? 0;
+				const globalCount = globalIndex?.entries.length ?? 0;
 				ctx.ui.notify(
-					exists
-						? `pi-skillforge is ready (${count} memories indexed). Try /skillforge capture gotcha.`
-						: "pi-skillforge is loaded. Run /skillforge init to create project memory storage.",
+					localExists || globalExists
+						? `pi-skillforge is ready (local=${localCount}, global=${globalCount}). Try /skillforge capture gotcha --global.`
+						: "pi-skillforge is loaded. Run /skillforge init or /skillforge init --global to create memory storage.",
 					"info",
 				);
 			} catch (error) {
@@ -229,23 +246,51 @@ export default function skillforgeExtension(pi: ExtensionAPI) {
 
 type SkillforgeCommand =
 	| { action: "status" }
-	| { action: "init" }
-	| { action: "validate" }
-	| { action: "reindex" }
-	| { action: "retrieve"; prompt: string }
-	| { action: "capture"; type: MemoryType };
+	| { action: "init"; scope: StoreScope }
+	| { action: "validate"; scope: StoreScope }
+	| { action: "reindex"; scope: StoreScope }
+	| { action: "retrieve"; prompt: string; scope: RetrieveScope }
+	| { action: "capture"; type: MemoryType; scope: StoreScope };
 
 function parseCommand(args: string | undefined): SkillforgeCommand {
 	const trimmed = (args ?? "").trim();
-	const [action, type] = trimmed.split(/\s+/);
-	const rest = trimmed.slice(action?.length ?? 0).trim();
-	if (action === "init" || action === "validate" || action === "reindex") return { action };
-	if (action === "capture") return { action, type: parseMemoryType(type) };
+	const tokens = trimmed.split(/\s+/).filter(Boolean);
+	const action = tokens[0];
+	if (action === "init" || action === "validate" || action === "reindex") {
+		return { action, scope: parseStoreScope(tokens, "local") };
+	}
+	if (action === "capture") {
+		return { action, type: parseMemoryType(tokens[1]), scope: parseStoreScope(tokens, "local") };
+	}
 	if (action === "retrieve" || action === "search") {
-		if (!rest) throw new Error("Usage: /skillforge retrieve <prompt terms>");
-		return { action: "retrieve", prompt: rest };
+		const prompt = tokens
+			.slice(1)
+			.filter((token) => !isScopeFlag(token))
+			.join(" ")
+			.trim();
+		if (!prompt)
+			throw new Error("Usage: /skillforge retrieve <prompt terms> [--local|--global|--all]");
+		return { action: "retrieve", prompt, scope: parseRetrieveScope(tokens, "all") };
 	}
 	return { action: "status" };
+}
+
+function parseStoreScope(tokens: string[], defaultScope: StoreScope): StoreScope {
+	if (tokens.includes("--global")) return "global";
+	if (tokens.includes("--local")) return "local";
+	if (tokens.includes("--all")) throw new Error("--all is only supported for retrieve/search");
+	return defaultScope;
+}
+
+function parseRetrieveScope(tokens: string[], defaultScope: RetrieveScope): RetrieveScope {
+	if (tokens.includes("--global")) return "global";
+	if (tokens.includes("--local")) return "local";
+	if (tokens.includes("--all")) return "all";
+	return defaultScope;
+}
+
+function isScopeFlag(token: string): boolean {
+	return token === "--local" || token === "--global" || token === "--all";
 }
 
 function parseMemoryType(value: string | undefined): MemoryType {
@@ -255,6 +300,7 @@ function parseMemoryType(value: string | undefined): MemoryType {
 
 function toMemoryDetails(memory: {
 	entry: { id: string; type: string; title: string };
+	scope: StoreScope;
 	path: string;
 	score: number;
 	reasons: string[];
@@ -263,6 +309,7 @@ function toMemoryDetails(memory: {
 		id: memory.entry.id,
 		type: memory.entry.type,
 		title: memory.entry.title,
+		scope: memory.scope,
 		path: memory.path,
 		score: memory.score,
 		reasons: memory.reasons,
@@ -284,7 +331,7 @@ function formatRetrieveReport(prompt: string, memories: RetrievedMemory[]): stri
 	const lines = [`pi-skillforge retrieval preview for: ${prompt}`];
 	for (const memory of memories) {
 		lines.push(
-			`- ${memory.entry.id} [${memory.entry.type}] score=${memory.score} reasons=${memory.reasons.join(",") || "none"}`,
+			`- ${memory.entry.id} [${memory.scope}:${memory.entry.type}] score=${memory.score} reasons=${memory.reasons.join(",") || "none"}`,
 		);
 		lines.push(`  title: ${memory.entry.title}`);
 		lines.push(`  path: ${memory.path}`);

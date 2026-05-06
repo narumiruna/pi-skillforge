@@ -1,15 +1,20 @@
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { parseMemoryText } from "./parse.js";
 import type { MemoryEntry, MemoryIndex, MemoryIndexEntry, MemoryType } from "./types.js";
 import { validateMemoryEntry } from "./validate.js";
 
 export const STORE_DIR = ".pi-skillforge";
+export const GLOBAL_STORE_DIR = "skillforge";
 export const INDEX_FILE = "index.json";
 export const REGISTRY_FILE = "registry.yaml";
 export const PROMOTION_LOG_FILE = "promotion-log.md";
 
+export type StoreScope = "local" | "global";
+
 export interface SkillforgePaths {
+	scope: StoreScope;
 	root: string;
 	memory: string;
 	gotchas: string;
@@ -21,16 +26,19 @@ export interface SkillforgePaths {
 }
 
 export interface ValidationReportItem {
+	scope: StoreScope;
 	path: string;
+	absolutePath: string;
 	valid: boolean;
 	errors: string[];
 	entry?: MemoryEntry;
 }
 
-export function getSkillforgePaths(cwd: string): SkillforgePaths {
-	const root = path.join(cwd, STORE_DIR);
+export function getSkillforgePaths(cwd: string, scope: StoreScope = "local"): SkillforgePaths {
+	const root = scope === "global" ? getGlobalSkillforgeRoot() : path.join(cwd, STORE_DIR);
 	const memory = path.join(root, "memory");
 	return {
+		scope,
 		root,
 		memory,
 		gotchas: path.join(memory, "gotchas"),
@@ -42,17 +50,20 @@ export function getSkillforgePaths(cwd: string): SkillforgePaths {
 	};
 }
 
-export async function storeExists(cwd: string): Promise<boolean> {
+export async function storeExists(cwd: string, scope: StoreScope = "local"): Promise<boolean> {
 	try {
-		return (await stat(getSkillforgePaths(cwd).root)).isDirectory();
+		return (await stat(getSkillforgePaths(cwd, scope).root)).isDirectory();
 	} catch (error) {
 		if (isNodeError(error) && error.code === "ENOENT") return false;
 		throw error;
 	}
 }
 
-export async function ensureStore(cwd: string): Promise<SkillforgePaths> {
-	const paths = getSkillforgePaths(cwd);
+export async function ensureStore(
+	cwd: string,
+	scope: StoreScope = "local",
+): Promise<SkillforgePaths> {
+	const paths = getSkillforgePaths(cwd, scope);
 	await Promise.all([
 		mkdir(paths.gotchas, { recursive: true }),
 		mkdir(paths.decisions, { recursive: true }),
@@ -64,18 +75,21 @@ export async function ensureStore(cwd: string): Promise<SkillforgePaths> {
 	return paths;
 }
 
-export async function validateStoredMemories(cwd: string): Promise<ValidationReportItem[]> {
-	const paths = getSkillforgePaths(cwd);
+export async function validateStoredMemories(
+	cwd: string,
+	scope: StoreScope = "local",
+): Promise<ValidationReportItem[]> {
+	const paths = getSkillforgePaths(cwd, scope);
 	const files = await listMemoryFiles(paths.memory);
-	const reports = await Promise.all(files.map((file) => validateMemoryFile(cwd, file)));
+	const reports = await Promise.all(files.map((file) => validateMemoryFile(cwd, paths, file)));
 	return reports.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export async function rebuildIndex(cwd: string): Promise<MemoryIndex> {
-	const paths = await ensureStore(cwd);
-	const reports = await validateStoredMemories(cwd);
+export async function rebuildIndex(cwd: string, scope: StoreScope = "local"): Promise<MemoryIndex> {
+	const paths = await ensureStore(cwd, scope);
+	const reports = await validateStoredMemories(cwd, scope);
 	const validEntries = reports.flatMap((report) =>
-		report.entry ? [toIndexEntry(cwd, report.path, report.entry)] : [],
+		report.entry ? [toIndexEntry(cwd, paths, report.absolutePath, report.entry)] : [],
 	);
 	const index: MemoryIndex = {
 		version: 1,
@@ -86,9 +100,12 @@ export async function rebuildIndex(cwd: string): Promise<MemoryIndex> {
 	return index;
 }
 
-export async function readIndex(cwd: string): Promise<MemoryIndex | undefined> {
+export async function readIndex(
+	cwd: string,
+	scope: StoreScope = "local",
+): Promise<MemoryIndex | undefined> {
 	try {
-		const text = await readFile(getSkillforgePaths(cwd).index, "utf8");
+		const text = await readFile(getSkillforgePaths(cwd, scope).index, "utf8");
 		const parsed = JSON.parse(text) as MemoryIndex;
 		if (parsed.version !== 1 || !Array.isArray(parsed.entries)) return undefined;
 		return parsed;
@@ -111,22 +128,27 @@ export function memoryDirectoryForType(paths: SkillforgePaths, type: MemoryType)
 
 async function validateMemoryFile(
 	cwd: string,
+	paths: SkillforgePaths,
 	absolutePath: string,
 ): Promise<ValidationReportItem> {
-	const relativePath = path.relative(cwd, absolutePath);
+	const displayPath = formatMemoryPath(cwd, paths, absolutePath);
 	try {
 		const text = await readFile(absolutePath, "utf8");
 		const parsed = parseMemoryText(text, absolutePath);
 		const result = validateMemoryEntry(parsed);
 		return {
-			path: relativePath,
+			scope: paths.scope,
+			path: displayPath,
+			absolutePath,
 			valid: result.valid,
 			errors: result.errors,
 			entry: result.entry,
 		};
 	} catch (error) {
 		return {
-			path: relativePath,
+			scope: paths.scope,
+			path: displayPath,
+			absolutePath,
 			valid: false,
 			errors: [error instanceof Error ? error.message : String(error)],
 		};
@@ -151,12 +173,17 @@ async function listMemoryFiles(directory: string): Promise<string[]> {
 	}
 }
 
-function toIndexEntry(cwd: string, memoryPath: string, entry: MemoryEntry): MemoryIndexEntry {
+function toIndexEntry(
+	cwd: string,
+	paths: SkillforgePaths,
+	memoryPath: string,
+	entry: MemoryEntry,
+): MemoryIndexEntry {
 	return {
 		id: entry.id,
 		type: entry.type,
 		title: entry.title,
-		path: path.relative(cwd, memoryPath),
+		path: formatIndexPath(cwd, paths, memoryPath),
 		scope: entry.scope,
 		skills: entry.skills ?? [],
 		compatible_skills: entry.compatible_skills ?? [],
@@ -165,6 +192,26 @@ function toIndexEntry(cwd: string, memoryPath: string, entry: MemoryEntry): Memo
 		hits: entry.hits,
 		updated_at: entry.updated_at,
 	};
+}
+
+function formatMemoryPath(cwd: string, paths: SkillforgePaths, absolutePath: string): string {
+	if (paths.scope === "local") return path.relative(cwd, absolutePath);
+	const relativePath = path.relative(paths.root, absolutePath);
+	if (process.env.PI_CODING_AGENT_DIR) return path.join(paths.root, relativePath);
+	return path.join("~", ".pi", "agent", GLOBAL_STORE_DIR, relativePath);
+}
+
+function formatIndexPath(cwd: string, paths: SkillforgePaths, absolutePath: string): string {
+	if (paths.scope === "local") return path.relative(cwd, absolutePath);
+	return path.relative(paths.root, absolutePath);
+}
+
+export function getGlobalAgentDir(): string {
+	return process.env.PI_CODING_AGENT_DIR ?? path.join(os.homedir(), ".pi", "agent");
+}
+
+export function getGlobalSkillforgeRoot(): string {
+	return path.join(getGlobalAgentDir(), GLOBAL_STORE_DIR);
 }
 
 function isMemoryFile(filename: string): boolean {

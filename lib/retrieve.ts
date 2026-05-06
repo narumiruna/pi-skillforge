@@ -1,18 +1,23 @@
 import path from "node:path";
+import type { StoreScope } from "./storage.js";
 import { validateStoredMemories } from "./storage.js";
 import type { MemoryEntry } from "./types.js";
 
 const DEFAULT_LIMIT = 5;
 const MIN_PROMPT_SCOPE_SCORE = 2;
 
+export type RetrieveScope = StoreScope | "all";
+
 export interface RetrieveOptions {
 	prompt: string;
 	activeSkills?: string[];
 	limit?: number;
+	scope?: RetrieveScope;
 }
 
 export interface RetrievedMemory {
 	entry: MemoryEntry;
+	scope: StoreScope;
 	path: string;
 	score: number;
 	reasons: string[];
@@ -22,7 +27,11 @@ export async function retrieveMemories(
 	cwd: string,
 	options: RetrieveOptions,
 ): Promise<RetrievedMemory[]> {
-	const reports = await validateStoredMemories(cwd);
+	const scopes: StoreScope[] =
+		options.scope === "local" || options.scope === "global" ? [options.scope] : ["local", "global"];
+	const reports = (
+		await Promise.all(scopes.map((scope) => validateStoredMemories(cwd, scope)))
+	).flat();
 	const activeSkills = normalizeSet(options.activeSkills ?? []);
 	const promptTerms = extractTerms(options.prompt);
 	const limit = options.limit ?? DEFAULT_LIMIT;
@@ -30,7 +39,7 @@ export async function retrieveMemories(
 	return reports
 		.flatMap((report) => {
 			if (!report.valid || !report.entry) return [];
-			const ranked = rankMemory(report.entry, report.path, activeSkills, promptTerms);
+			const ranked = rankMemory(report.entry, report.scope, report.path, activeSkills, promptTerms);
 			return ranked ? [ranked] : [];
 		})
 		.sort((a, b) => b.score - a.score || b.entry.updated_at.localeCompare(a.entry.updated_at))
@@ -50,7 +59,7 @@ export function formatRetrievedMemories(memories: RetrievedMemory[]): string {
 		const fix = firstSentence(entry.fix[0] ?? "Review the stored memory before proceeding.");
 		const verification = firstSentence(entry.verification[0] ?? "No verification recorded.");
 		lines.push(
-			`- [${entry.type}] ${entry.title} (${entry.id}): ${fix} Verification: ${verification}`,
+			`- [${memory.scope}:${entry.type}] ${entry.title} (${entry.id}): ${fix} Verification: ${verification}`,
 		);
 	}
 
@@ -59,6 +68,7 @@ export function formatRetrievedMemories(memories: RetrievedMemory[]): string {
 
 function rankMemory(
 	entry: MemoryEntry,
+	scope: StoreScope,
 	memoryPath: string,
 	activeSkills: Set<string>,
 	promptTerms: Set<string>,
@@ -108,7 +118,7 @@ function rankMemory(
 		return undefined;
 	}
 
-	return { entry, path: memoryPath, score, reasons };
+	return { entry, scope, path: memoryPath, score, reasons };
 }
 
 function scorePromptScope(

@@ -272,9 +272,9 @@ Promotion output should be a patch proposal, not an automatic rewrite. Direct sk
 
 ### 3. Retrieval workflow
 
-* Read active skill metadata from Pi context where available
-* Filter by skill/scope/exclusions
-* Inject concise memory summaries before agent start
+* Read active skill metadata from Pi context where available ✅
+* Filter by skill/scope/exclusions ✅
+* Inject concise memory summaries before agent start ✅
 
 ### 4. Promotion workflow
 

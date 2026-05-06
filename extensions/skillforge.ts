@@ -6,6 +6,7 @@ import {
 	parseReviewedMemory,
 	saveMemoryEntry,
 } from "../lib/capture.js";
+import { formatRetrievedMemories, retrieveMemories } from "../lib/retrieve.js";
 import { formatMemoryMarkdown } from "../lib/serialize.js";
 import {
 	ensureStore,
@@ -54,6 +55,29 @@ interface CaptureToolParams {
 }
 
 export default function skillforgeExtension(pi: ExtensionAPI) {
+	pi.on("before_agent_start", async (event, ctx) => {
+		try {
+			const memories = await retrieveMemories(ctx.cwd, {
+				prompt: event.prompt,
+				activeSkills: event.systemPromptOptions.skills?.map((skill) => skill.name) ?? [],
+				limit: 5,
+			});
+			const content = formatRetrievedMemories(memories);
+			if (!content) return undefined;
+
+			return {
+				message: {
+					customType: "pi-skillforge-memory",
+					content,
+					display: false,
+					details: { memories: memories.map(toMemoryDetails) },
+				},
+			};
+		} catch {
+			return undefined;
+		}
+	});
+
 	pi.registerTool({
 		name: "skillforge_capture_memory",
 		label: "Capture Skillforge Memory",
@@ -210,6 +234,22 @@ function parseCommand(args: string | undefined): SkillforgeCommand {
 function parseMemoryType(value: string | undefined): MemoryType {
 	if (value === "gotcha" || value === "decision" || value === "pattern") return value;
 	throw new Error("Usage: /skillforge capture <gotcha|decision|pattern>");
+}
+
+function toMemoryDetails(memory: {
+	entry: { id: string; type: string; title: string };
+	path: string;
+	score: number;
+	reasons: string[];
+}): Record<string, unknown> {
+	return {
+		id: memory.entry.id,
+		type: memory.entry.type,
+		title: memory.entry.title,
+		path: memory.path,
+		score: memory.score,
+		reasons: memory.reasons,
+	};
 }
 
 function formatInvalidReports(reports: Array<{ path: string; errors: string[] }>): string {

@@ -93,11 +93,12 @@ pi-skillforge/
 │   └── skillforge.ts
 ├── lib/
 │   ├── capture.ts
+│   ├── parse.ts
 │   ├── retrieve.ts
-│   ├── promote.ts
-│   ├── validate.ts
-│   ├── registry.ts
-│   └── storage.ts
+│   ├── serialize.ts
+│   ├── storage.ts
+│   ├── types.ts
+│   └── validate.ts
 ├── schemas/
 │   ├── memory.schema.json
 │   └── skill-registry.schema.json
@@ -109,7 +110,7 @@ pi-skillforge/
 │   ├── memory-entry.md
 │   ├── skill-registry.yaml
 │   └── promoted-skill-patch.md
-└── tests/
+└── tests/                  # planned
     ├── capture.test.ts
     ├── retrieve.test.ts
     ├── promote.test.ts
@@ -217,22 +218,31 @@ verification:
 
 Retrieval should be conservative:
 
-1. Detect active skills from Pi's loaded skill context when available.
-2. Match memory entries by `skills` and `compatible_skills`.
-3. Exclude entries matching `excluded_skills`.
-4. Further filter by file path, language, tool, and user prompt terms.
-5. Inject only the smallest relevant summary into the agent context.
+1. Detect active skills from Pi's loaded skill context when available. ✅
+2. Match memory entries by `skills` and `compatible_skills`. ✅
+3. Exclude entries matching `excluded_skills`. ✅
+4. Further filter by file path, language, tool, and user prompt terms. ✅
+5. Inject only the smallest relevant summary into the agent context. ✅
+
+Current implementation notes:
+
+* `draft` and `deprecated` memories are ignored.
+* Skill-scoped memories require a `skills` or `compatible_skills` match when active skills are available.
+* A skill match alone is not enough; prompt/scope terms must also match to avoid broad injection.
+* `/skillforge retrieve <prompt>` and `/skillforge search <prompt>` preview matching memory ids, scores, reasons, paths, and fix lines.
 
 A retrieved memory should explain what to do now, not replay the full historical debugging story.
 
 ## Capture Model
 
-Memory capture should be explicit and reviewable. Initial commands/tools should support:
+Memory capture should be explicit and reviewable. Implemented commands/tools support:
 
-* drafting a gotcha from the current session
-* validating required schema fields
-* storing the entry under `.pi-skillforge/memory/`
-* updating `index.json`
+* drafting gotchas, decisions, and patterns with `/skillforge capture <type>` ✅
+* validating required schema fields ✅
+* rejecting unreplaced template placeholders before saving ✅
+* storing the entry under `.pi-skillforge/memory/` ✅
+* updating `index.json` ✅
+* explicit agent-tool capture via `skillforge_capture_memory` when the user asks to remember verified memory ✅
 
 The extension should not silently mine every conversation into memory.
 
@@ -254,9 +264,9 @@ Promotion output should be a patch proposal, not an automatic rewrite. Direct sk
 
 ### 0. Package scaffold
 
-* Pi package manifest using `extensions/`
-* `/skillforge` command to verify loading
-* Biome, TypeScript, pre-commit, and justfile release workflow
+* Pi package manifest using `extensions/` ✅
+* `/skillforge` command to verify loading ✅
+* Biome, TypeScript, pre-commit, and justfile release workflow ✅
 
 ### 1. Storage and validation
 
@@ -275,6 +285,7 @@ Promotion output should be a patch proposal, not an automatic rewrite. Direct sk
 * Read active skill metadata from Pi context where available ✅
 * Filter by skill/scope/exclusions ✅
 * Inject concise memory summaries before agent start ✅
+* Add retrieval preview/debug command ✅
 
 ### 4. Promotion workflow
 

@@ -138,15 +138,19 @@ Promotion is checked after a memory is saved and after relevant memories are ret
 pi-skillforge/
 ├── extensions/
 │   └── skillforge.ts
-├── lib/
-│   ├── capture.ts
-│   ├── parse.ts
-│   ├── promotion.ts
-│   ├── retrieve.ts
-│   ├── serialize.ts
-│   ├── storage.ts
-│   ├── types.ts
-│   └── validate.ts
+├── src/
+│   ├── memory/
+│   │   ├── capture.ts
+│   │   ├── parse.ts
+│   │   ├── retrieve.ts
+│   │   ├── serialize.ts
+│   │   └── validate.ts
+│   ├── promotion/
+│   │   └── promotion.ts
+│   ├── store/
+│   │   └── storage.ts
+│   └── shared/
+│       └── types.ts
 ├── schemas/
 ├── templates/
 ├── examples/

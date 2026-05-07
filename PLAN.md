@@ -82,7 +82,7 @@ Large historical notes, debugging stories, or one-off failures belong in memory,
 
 ## Pi Package Structure
 
-The repository follows Pi package conventions. Extension entry files live under `extensions/`; reusable implementation modules live under `lib/`.
+The repository follows Pi package conventions. Extension entry files live under `extensions/`; reusable implementation modules live under `src/`, grouped by product seam.
 
 ```txt
 pi-skillforge/
@@ -91,15 +91,19 @@ pi-skillforge/
 ├── package.json
 ├── extensions/
 │   └── skillforge.ts
-├── lib/
-│   ├── capture.ts
-│   ├── parse.ts
-│   ├── promotion.ts
-│   ├── retrieve.ts
-│   ├── serialize.ts
-│   ├── storage.ts
-│   ├── types.ts
-│   └── validate.ts
+├── src/
+│   ├── memory/
+│   │   ├── capture.ts
+│   │   ├── parse.ts
+│   │   ├── retrieve.ts
+│   │   ├── serialize.ts
+│   │   └── validate.ts
+│   ├── promotion/
+│   │   └── promotion.ts
+│   ├── store/
+│   │   └── storage.ts
+│   └── shared/
+│       └── types.ts
 ├── schemas/
 │   ├── memory.schema.json
 │   └── skill-registry.schema.json

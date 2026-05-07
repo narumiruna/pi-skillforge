@@ -2,15 +2,15 @@ import { statSync } from "node:fs";
 import { appendFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { RetrievedMemory } from "./retrieve.js";
+import type { RetrievedMemory } from "../memory/retrieve.js";
+import type { MemoryEntry } from "../shared/types.js";
 import {
 	ensureStore,
 	formatDisplayPath,
 	getGlobalAgentDir,
 	getGlobalSkillforgeRoot,
 	type MemoryPartition,
-} from "./storage.js";
-import type { MemoryEntry } from "./types.js";
+} from "../store/storage.js";
 
 const PROMOTION_HIT_THRESHOLD = 3;
 const PROMOTION_VERSION = 1;

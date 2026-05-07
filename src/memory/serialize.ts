@@ -1,4 +1,4 @@
-import type { MemoryEntry } from "./types.js";
+import type { MemoryEntry } from "../shared/types.js";
 
 export function formatMemoryMarkdown(entry: MemoryEntry): string {
 	return `---\n${formatMemoryYaml(entry)}---\n\n`;

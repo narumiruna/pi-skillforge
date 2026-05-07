@@ -1,5 +1,5 @@
-import type { MemoryEntry, ValidationResult } from "./types.js";
-import { CONFIDENCE_LEVELS, MEMORY_TYPES } from "./types.js";
+import type { MemoryEntry, ValidationResult } from "../shared/types.js";
+import { CONFIDENCE_LEVELS, MEMORY_TYPES } from "../shared/types.js";
 
 const MEMORY_TYPE_VALUES: readonly string[] = MEMORY_TYPES;
 const CONFIDENCE_VALUES: readonly string[] = CONFIDENCE_LEVELS;

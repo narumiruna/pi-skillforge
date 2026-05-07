@@ -1,16 +1,21 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { parseMemoryText } from "./parse.js";
-import { formatMemoryMarkdown } from "./serialize.js";
-import type { MemoryPartition } from "./storage.js";
-import { ensureStore, formatDisplayPath, memoryDirectoryForType, rebuildIndex } from "./storage.js";
 import type {
 	ConfidenceLevel,
 	MemoryEntry,
 	MemoryIndex,
 	MemoryScope,
 	MemoryType,
-} from "./types.js";
+} from "../shared/types.js";
+import type { MemoryPartition } from "../store/storage.js";
+import {
+	ensureStore,
+	formatDisplayPath,
+	memoryDirectoryForType,
+	rebuildIndex,
+} from "../store/storage.js";
+import { parseMemoryText } from "./parse.js";
+import { formatMemoryMarkdown } from "./serialize.js";
 import { validateMemoryEntry } from "./validate.js";
 
 const PLACEHOLDER_PATTERN = /replace with|replace-with/i;

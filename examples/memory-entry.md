@@ -10,7 +10,7 @@ scope:
     - tsc
   files:
     - extensions/**/*.ts
-    - lib/**/*.ts
+    - src/**/*.ts
 skills:
   - pi-extensions
 compatible_skills:
@@ -28,7 +28,7 @@ symptom:
 root_cause:
   - NodeNext ESM imports must use runtime-compatible file suffixes even when importing TypeScript sources.
 fix:
-  - Use relative imports ending in `.js`, such as `../lib/storage.js`.
+  - Use relative imports ending in `.js`, such as `../src/store/storage.js`.
 verification:
   - `npm run typecheck` passes after adding `.js` import suffixes.
 ---

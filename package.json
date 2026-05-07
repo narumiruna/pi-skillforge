@@ -1,6 +1,6 @@
 {
 	"name": "@narumitw/pi-skillforge",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Pi package for improving agent skills through verified project memory.",
 	"type": "module",
 	"scripts": {
@@ -29,7 +29,7 @@
 	],
 	"files": [
 		"extensions",
-		"lib",
+		"src",
 		"schemas",
 		"templates",
 		"examples",

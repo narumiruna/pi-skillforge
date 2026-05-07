@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
-import { createMemoryEntry, saveMemoryEntry } from "../lib/capture.js";
+import { createMemoryEntry, saveMemoryEntry } from "../src/memory/capture.js";
+import { formatRetrievedMemories, retrieveMemories } from "../src/memory/retrieve.js";
 import {
 	applyProposal,
 	createSkillPathMap,
@@ -8,10 +9,9 @@ import {
 	listPendingProposals,
 	promoteMemoryIfEligible,
 	promoteRetrievedMemories,
-} from "../lib/promotion.js";
-import { formatRetrievedMemories, retrieveMemories } from "../lib/retrieve.js";
-import type { MemoryPartition } from "../lib/storage.js";
-import type { ConfidenceLevel, MemoryScope, MemoryType } from "../lib/types.js";
+} from "../src/promotion/promotion.js";
+import type { ConfidenceLevel, MemoryScope, MemoryType } from "../src/shared/types.js";
+import type { MemoryPartition } from "../src/store/storage.js";
 
 const memoryTypeSchema = Type.Union([
 	Type.Literal("gotcha"),

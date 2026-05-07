@@ -4,9 +4,9 @@ import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { parseMemoryText } from "./parse.js";
-import type { MemoryEntry, MemoryIndex, MemoryIndexEntry, MemoryType } from "./types.js";
-import { validateMemoryEntry } from "./validate.js";
+import { parseMemoryText } from "../memory/parse.js";
+import { validateMemoryEntry } from "../memory/validate.js";
+import type { MemoryEntry, MemoryIndex, MemoryIndexEntry, MemoryType } from "../shared/types.js";
 
 const execFileAsync = promisify(execFile);
 

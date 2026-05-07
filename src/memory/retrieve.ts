@@ -1,7 +1,7 @@
 import path from "node:path";
-import type { MemoryPartition, RetrievePartition } from "./storage.js";
-import { validateRetrievalMemories } from "./storage.js";
-import type { MemoryEntry } from "./types.js";
+import type { MemoryEntry } from "../shared/types.js";
+import type { MemoryPartition, RetrievePartition } from "../store/storage.js";
+import { validateRetrievalMemories } from "../store/storage.js";
 
 const DEFAULT_LIMIT = 5;
 const MIN_PROMPT_SCOPE_SCORE = 2;

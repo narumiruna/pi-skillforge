@@ -1,0 +1,85 @@
+name: Bump version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: SemVer bump to apply
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      create_github_release:
+        description: Create a GitHub Release for the new tag
+        required: true
+        type: boolean
+        default: true
+      release_notes:
+        description: Optional release notes. Leave empty to generate notes automatically.
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-version-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  bump-version:
+    name: Bump package version and tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version, commit, and tag
+        id: version
+        run: |
+          set -euo pipefail
+
+          npm version "${{ inputs.version_bump }}" -m "chore(release): v%s"
+          new_version="$(node -p "require('./package.json').version")"
+          tag="v${new_version}"
+
+          echo "new_version=${new_version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Push commit and tag
+        run: |
+          git push origin "HEAD:${{ github.ref_name }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Create GitHub Release
+        if: ${{ inputs.create_github_release }}
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          NOTES: ${{ inputs.release_notes }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "$NOTES" ]; then
+            gh release create "$TAG" --title "$TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi

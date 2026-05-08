@@ -31,6 +31,7 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag_name || github.ref_name }}
           NOTES: ${{ github.event.inputs.release_notes }}
         run: |
@@ -42,7 +43,7 @@ jobs:
           fi
 
           if [ -n "$NOTES" ]; then
-            gh release create "$TAG" --title "$TAG" --notes "$NOTES"
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes "$NOTES"
           else
-            gh release create "$TAG" --title "$TAG" --generate-notes
+            gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
           fi

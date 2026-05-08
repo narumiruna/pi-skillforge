@@ -8,9 +8,9 @@ on:
         required: true
         type: choice
         options:
-          - patch
-          - minor
           - major
+          - minor
+          - patch
         default: patch
 
 permissions:

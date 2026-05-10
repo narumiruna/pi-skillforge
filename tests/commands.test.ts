@@ -13,7 +13,7 @@ import {
 	parseSkillforgeCommand,
 } from "../src/memory/commands.js";
 import type { MemoryType } from "../src/shared/types.js";
-import { readIndex } from "../src/store/storage.js";
+import { getGlobalSkillforgeRoot, readIndex } from "../src/store/storage.js";
 
 async function createIsolatedWorkspace(): Promise<string> {
 	const root = await mkdtemp(path.join(tmpdir(), "pi-skillforge-test-"));
@@ -95,6 +95,20 @@ test("lists global gotchas with English and Chinese command filters", async () =
 		assert.match(output, /Global list gotcha \(gotcha-global-list\)/);
 		assert.doesNotMatch(output, /Hidden decision/);
 	}
+});
+
+test("saving memory creates only the target memory type directory", async () => {
+	const cwd = await createIsolatedWorkspace();
+	await saveMemoryEntry(cwd, memory("gotcha", "gotcha-lazy-directories"), {
+		partition: "global",
+	});
+
+	const root = getGlobalSkillforgeRoot();
+	assert.equal(await exists(path.join(root, "memory", "global", "gotchas")), true);
+	assert.equal(await exists(path.join(root, "memory", "global", "decisions")), false);
+	assert.equal(await exists(path.join(root, "memory", "global", "patterns")), false);
+	assert.equal(await exists(path.join(root, "memory", "projects")), false);
+	assert.equal(await exists(path.join(root, "promotions")), false);
 });
 
 test("previews delete target without deleting, then deletes by id and rebuilds the index", async () => {

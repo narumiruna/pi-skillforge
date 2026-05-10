@@ -8,7 +8,8 @@
 		"lint": "biome lint .",
 		"biome:check": "biome check .",
 		"typecheck": "tsc --noEmit",
-		"check": "npm run biome:check && npm run typecheck"
+		"test": "rm -rf .tmp-test-dist && tsc --outDir .tmp-test-dist --noEmit false && node --test .tmp-test-dist/tests/*.test.js",
+		"check": "npm run biome:check && npm run typecheck && npm test"
 	},
 	"license": "MIT",
 	"repository": {

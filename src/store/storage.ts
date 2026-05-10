@@ -70,12 +70,6 @@ export async function ensureStore(
 	partition: MemoryPartition = "project",
 ): Promise<SkillforgePaths> {
 	const paths = await getSkillforgePaths(cwd, partition);
-	await Promise.all([
-		mkdir(paths.gotchas, { recursive: true }),
-		mkdir(paths.decisions, { recursive: true }),
-		mkdir(paths.patterns, { recursive: true }),
-		mkdir(paths.promotions, { recursive: true }),
-	]);
 	await writeIfMissing(paths.registry, defaultRegistry());
 	await writeIfMissing(paths.promotionLog, "# pi-skillforge Promotion Log\n\n");
 	await writeIfMissing(paths.index, `${JSON.stringify(emptyIndex(), null, "\t")}\n`);
@@ -104,7 +98,6 @@ export async function validateRetrievalMemories(
 }
 
 export async function rebuildIndex(cwd: string): Promise<MemoryIndex> {
-	await Promise.all([ensureStore(cwd, "project"), ensureStore(cwd, "global")]);
 	const reports = await validateRetrievalMemories(cwd, "all");
 	const validEntries = reports.flatMap((report) =>
 		report.entry ? [toIndexEntry(report.absolutePath, report.entry)] : [],
@@ -114,11 +107,9 @@ export async function rebuildIndex(cwd: string): Promise<MemoryIndex> {
 		updated_at: new Date().toISOString(),
 		entries: validEntries.sort((a, b) => a.id.localeCompare(b.id)),
 	};
-	await writeFile(
-		path.join(getGlobalSkillforgeRoot(), INDEX_FILE),
-		`${JSON.stringify(index, null, "\t")}\n`,
-		"utf8",
-	);
+	const indexPath = path.join(getGlobalSkillforgeRoot(), INDEX_FILE);
+	await mkdir(path.dirname(indexPath), { recursive: true });
+	await writeFile(indexPath, `${JSON.stringify(index, null, "\t")}\n`, "utf8");
 	return index;
 }
 

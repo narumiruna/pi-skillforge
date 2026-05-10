@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
 	ConfidenceLevel,
@@ -114,6 +114,7 @@ export async function saveMemoryEntry(
 
 	const paths = await ensureStore(cwd, options.partition ?? "project");
 	const memoryDir = memoryDirectoryForType(paths, validation.entry.type);
+	await mkdir(memoryDir, { recursive: true });
 	const memoryPath = path.join(memoryDir, `${validation.entry.id}.md`);
 	await writeFile(memoryPath, formatMemoryMarkdown(validation.entry), {
 		encoding: "utf8",

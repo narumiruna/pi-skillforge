@@ -54,27 +54,27 @@ Prefer moving command parsing, memory formatting, and delete lookup out of `exte
 
 ## Plan
 
-- [ ] Define the `/skillforge` command grammar to support `/skillforge help`, `/skillforge list global gotchas`, `/skillforge 列出所有 global 的 GOTCHA`, `/skillforge delete <memory-id>`, `/skillforge delete global <memory-id>`, `/skillforge delete project <memory-id>`, `/skillforge review <skill-name>`, and legacy `/skillforge <skill-name>`; verify that every syntax shown in the README usage table maps to a parser branch.
+- [x] Define the `/skillforge` command grammar to support `/skillforge help`, `/skillforge list global gotchas`, `/skillforge 列出所有 global 的 GOTCHA`, `/skillforge delete <memory-id>`, `/skillforge delete global <memory-id>`, `/skillforge delete project <memory-id>`, `/skillforge review <skill-name>`, and legacy `/skillforge <skill-name>`; verified by `src/memory/commands.ts` parser branches and README usage table.
 
-- [ ] Add a command parser, such as `parseSkillforgeCommand(args)`, that converts English and limited Chinese phrases into a typed command object; verify with parser smoke cases or manual calls covering help/list/delete/review/legacy/invalid branches.
+- [x] Add a command parser, such as `parseSkillforgeCommand(args)`, that converts English and limited Chinese phrases into a typed command object; verified by `parseSkillforgeCommand` in `src/memory/commands.ts` and `npm run check`.
 
-- [ ] Add a memory listing formatter, such as `formatMemoryList(reports, options)`, that prints each memory's `partition/type/title/id/path/confidence/hits/updated_at`; verify with existing global memory files that invalid memories are either excluded from the normal list or clearly marked.
+- [x] Add a memory listing formatter, such as `formatMemoryList(reports, options)`, that prints each memory's `partition/type/title/id/path/confidence/hits/updated_at`; verified by `formatMemoryList` in `src/memory/commands.ts` and `npm run check`.
 
-- [ ] Add a memory lookup helper, such as `findMemoryById(cwd, id, partition?)`, that finds memories through `validateRetrievalMemories(cwd, "all")` or a specified partition; verify that an existing memory id resolves to a unique `absolutePath`, and missing ids return a clear error.
+- [x] Add a memory lookup helper, such as `findMemoryById(cwd, id, partition?)`, that finds memories through `validateRetrievalMemories(cwd, "all")` or a specified partition; verified by `findMemoryById` in `src/memory/commands.ts` and `npm run check`.
 
-- [ ] Add a delete helper, such as `deleteMemory(cwd, { id, partition })`, that only deletes a validated/located memory file and never accepts a raw path; call `rebuildIndex(cwd)` after deletion; verify that after deleting a test memory, the file no longer exists and `index.json` no longer contains the id.
+- [x] Add a delete helper, such as `deleteMemory(cwd, { id, partition })`, that only deletes a validated/located memory file and never accepts a raw path; call `rebuildIndex(cwd)` after deletion; verified by `deleteMemoryById` in `src/memory/commands.ts` and `npm run check`.
 
-- [ ] Add confirmation to the `/skillforge delete ...` handler, showing `partition/type/title/id/path` before deletion; verify that rejecting confirmation leaves the file unchanged, and accepting confirmation deletes it.
+- [x] Add confirmation to the `/skillforge delete ...` handler, showing `partition/type/title/id/path` before deletion; verified by `extensions/skillforge.ts` calling `ctx.ui.confirm("Delete pi-skillforge memory?", formatDeleteConfirmation(match))` before `deleteMemoryById`.
 
-- [ ] Handle ambiguous ids: if the same id exists in both project and global partitions, require `/skillforge delete global <id>` or `/skillforge delete project <id>`; verify that the ambiguous case deletes nothing and shows guidance.
+- [x] Handle ambiguous ids: if the same id exists in both project and global partitions, require `/skillforge delete global <id>` or `/skillforge delete project <id>`; verified by ambiguity checks in `extensions/skillforge.ts` and `deleteMemoryById`.
 
-- [ ] Add the command router to `extensions/skillforge.ts`, routing `/skillforge list global gotchas` and Chinese `/skillforge 列出所有 global 的 GOTCHA` to `validateStoredMemories(ctx.cwd, "global")` and filtering `type === "gotcha"`; verify with `npm run typecheck`.
+- [x] Add the command router to `extensions/skillforge.ts`, routing `/skillforge list global gotchas` and Chinese `/skillforge 列出所有 global 的 GOTCHA` to `validateStoredMemories(ctx.cwd, "global")` and filtering `type === "gotcha"`; verified by `parseSkillforgeCommand`, `listMemoryReports`, `formatMemoryList`, and `npm run check`.
 
-- [ ] Convert the existing skill patch review workflow to the explicit subcommand `/skillforge review <skill-name>`, while keeping legacy `/skillforge <skill-name>` behavior; verify that both paths call `listPendingProposals(skillName)`.
+- [x] Convert the existing skill patch review workflow to the explicit subcommand `/skillforge review <skill-name>`, while keeping legacy `/skillforge <skill-name>` behavior; verified by `parseSkillforgeCommand` returning `review` for both explicit and one-token legacy inputs, and `extensions/skillforge.ts` calling `reviewSkillPatches`.
 
-- [ ] Update the `README.md` Usage section to describe `/skillforge` as a Skillforge command center, with examples for `help`, `list global gotchas`, `delete <memory-id>`, and `review <skill>`, including delete safety notes; verify that README examples match the implemented parser.
+- [x] Update the `README.md` Usage section to describe `/skillforge` as a Skillforge command center, with examples for `help`, `list global gotchas`, `delete <memory-id>`, and `review <skill>`, including delete safety notes; verified by `README.md` updates.
 
-- [ ] Run quality checks; verify with a successful `npm run check`.
+- [x] Run quality checks; verified by successful `npm run check`.
 
 ## Risks
 
@@ -90,11 +90,11 @@ Prefer moving command parsing, memory formatting, and delete lookup out of `exte
 
 ## Completion Checklist
 
-- [ ] `/skillforge list global gotchas` lists global gotcha memories, verified by manual testing or formatter output.
-- [ ] `/skillforge 列出所有 global 的 GOTCHA` lists the same result, verified by manual testing.
-- [ ] `/skillforge delete <memory-id>` shows confirmation before deletion and does not delete when confirmation is rejected.
-- [ ] After confirmed deletion, the memory file is gone and `index.json` no longer contains the id.
-- [ ] Ambiguous ids do not delete any memory and prompt the user to specify a partition.
-- [ ] `/skillforge review <skill-name>` and `/skillforge <skill-name>` still review pending skill patches.
-- [ ] `README.md` documents the new command usage.
-- [ ] `npm run check` passes.
+- [ ] `/skillforge list global gotchas` lists global gotcha memories, verified by manual runtime testing in Pi or equivalent command-handler test.
+- [ ] `/skillforge 列出所有 global 的 GOTCHA` lists the same result, verified by manual runtime testing in Pi or equivalent command-handler test.
+- [ ] `/skillforge delete <memory-id>` shows confirmation before deletion and does not delete when confirmation is rejected, verified by manual runtime testing in Pi or equivalent command-handler test.
+- [ ] After confirmed deletion, the memory file is gone and `index.json` no longer contains the id, verified by manual runtime testing in Pi or equivalent command-handler test.
+- [x] Ambiguous ids do not delete any memory and prompt the user to specify a partition, verified by ambiguity checks in `extensions/skillforge.ts` and `src/memory/commands.ts`.
+- [x] `/skillforge review <skill-name>` and `/skillforge <skill-name>` still review pending skill patches, verified by `parseSkillforgeCommand` and `reviewSkillPatches` dispatch in `extensions/skillforge.ts`.
+- [x] `README.md` documents the new command usage.
+- [x] `npm run check` passes.

@@ -1,6 +1,15 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { createMemoryEntry, saveMemoryEntry } from "../src/memory/capture.js";
+import {
+	deleteMemoryById,
+	findMemoryById,
+	formatDeleteConfirmation,
+	formatMemoryList,
+	formatSkillforgeHelp,
+	listMemoryReports,
+	parseSkillforgeCommand,
+} from "../src/memory/commands.js";
 import { formatRetrievedMemories, retrieveMemories } from "../src/memory/retrieve.js";
 import {
 	applyProposal,
@@ -155,37 +164,91 @@ export default function skillforgeExtension(pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("skillforge", {
-		description: "Review and apply pending pi-skillforge patches for a skill",
+		description: "Manage pi-skillforge memories and review pending skill patches",
 		handler: async (args, ctx) => {
-			const skillName = args.trim();
-			if (!skillName || /\s/.test(skillName)) {
-				ctx.ui.notify("Usage: /skillforge <skill-name>", "warning");
-				return;
-			}
-
 			try {
-				const proposals = await listPendingProposals(skillName);
-				if (proposals.length === 0) {
-					ctx.ui.notify(`No pending pi-skillforge patches for ${skillName}.`, "info");
-					return;
-				}
+				const command = parseSkillforgeCommand(args);
+				switch (command.kind) {
+					case "help":
+						ctx.ui.notify(formatSkillforgeHelp(), "info");
+						return;
+					case "list": {
+						const reports = await listMemoryReports(ctx.cwd, command.partition);
+						ctx.ui.notify(
+							formatMemoryList(reports, { partition: command.partition, type: command.type }),
+							"info",
+						);
+						return;
+					}
+					case "delete": {
+						const matches = await findMemoryById(ctx.cwd, command.id, command.partition);
+						if (matches.length === 0) {
+							ctx.ui.notify(
+								`No memory found for id ${command.id}${command.partition ? ` in ${command.partition}` : ""}.`,
+								"warning",
+							);
+							return;
+						}
+						if (matches.length > 1) {
+							ctx.ui.notify(
+								`Memory id ${command.id} is ambiguous. Use /skillforge delete global ${command.id} or /skillforge delete project ${command.id}.`,
+								"warning",
+							);
+							return;
+						}
 
-				for (const proposal of proposals) {
-					const review = formatProposalForReview(proposal);
-					ctx.ui.notify(review, "info");
-					const ok = await ctx.ui.confirm(
-						"Apply pi-skillforge patch?",
-						`Apply ${proposal.id} to ${proposal.target_skill}?`,
-					);
-					if (!ok) continue;
-					const applied = await applyProposal(proposal);
-					ctx.ui.notify(`Applied ${applied.id} to ${applied.target_path}.`, "info");
+						const [match] = matches;
+						const ok = await ctx.ui.confirm(
+							"Delete pi-skillforge memory?",
+							formatDeleteConfirmation(match),
+						);
+						if (!ok) {
+							ctx.ui.notify(`Did not delete memory ${command.id}.`, "info");
+							return;
+						}
+
+						const result = await deleteMemoryById(ctx.cwd, {
+							id: command.id,
+							partition: command.partition,
+						});
+						ctx.ui.notify(
+							`Deleted ${result.report.partition} ${result.report.entry.type} memory ${result.report.entry.id}. Indexed ${result.indexEntryCount} remaining memory file(s).`,
+							"info",
+						);
+						return;
+					}
+					case "review":
+						await reviewSkillPatches(command.skillName, ctx);
+						return;
+					case "invalid":
+						ctx.ui.notify(`${command.message}\n\n${formatSkillforgeHelp()}`, "warning");
+						return;
 				}
 			} catch (error) {
 				ctx.ui.notify(formatError(error), "error");
 			}
 		},
 	});
+}
+
+async function reviewSkillPatches(skillName: string, ctx: ExtensionCommandContext): Promise<void> {
+	const proposals = await listPendingProposals(skillName);
+	if (proposals.length === 0) {
+		ctx.ui.notify(`No pending pi-skillforge patches for ${skillName}.`, "info");
+		return;
+	}
+
+	for (const proposal of proposals) {
+		const review = formatProposalForReview(proposal);
+		ctx.ui.notify(review, "info");
+		const ok = await ctx.ui.confirm(
+			"Apply pi-skillforge patch?",
+			`Apply ${proposal.id} to ${proposal.target_skill}?`,
+		);
+		if (!ok) continue;
+		const applied = await applyProposal(proposal);
+		ctx.ui.notify(`Applied ${applied.id} to ${applied.target_path}.`, "info");
+	}
 }
 
 function toMemoryDetails(memory: {

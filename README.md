@@ -40,26 +40,43 @@ What happens automatically:
 2. During work, the agent may call `skillforge_capture_memory` when it has a verified reusable gotcha, decision, or pattern.
 3. When a confirmed memory becomes stable enough, the extension writes a pending skill patch proposal under the global Skillforge store.
 
-The only user-facing command is for reviewing generated skill patches:
+The user-facing `/skillforge` command is a small command center for reviewing generated skill patches and inspecting or deleting stored memories:
 
 ```text
+/skillforge help
+/skillforge list [all|global|project] [all|gotchas|decisions|patterns]
+/skillforge 列出所有 global 的 GOTCHA
+/skillforge delete <memory-id>
+/skillforge delete global <memory-id>
+/skillforge delete project <memory-id>
+/skillforge review <skill-name>
 /skillforge <skill-name>
 ```
 
-Example:
+Examples:
 
 ```text
-/skillforge python-typer
+/skillforge list global gotchas
+/skillforge delete global gotcha-example-id
+/skillforge review python-typer
 ```
 
-This command:
+Patch review commands:
 
-1. Finds pending patch proposals for the named skill.
-2. Shows the target skill, source memory, proposed guidance, rationale, and verification evidence.
-3. Asks for approval before editing the target `SKILL.md`.
-4. Marks the proposal as applied and appends to `promotion-log.md` after a successful apply.
+1. Find pending patch proposals for the named skill.
+2. Show the target skill, source memory, proposed guidance, rationale, and verification evidence.
+3. Ask for approval before editing the target `SKILL.md`.
+4. Mark the proposal as applied and append to `promotion-log.md` after a successful apply.
 
-It does not apply patches without confirmation.
+The legacy shorthand `/skillforge <skill-name>` still reviews patches for that skill.
+
+Memory delete commands are intentionally conservative:
+
+1. They delete by memory id only, never by arbitrary filesystem path.
+2. They show the partition, type, title, id, and path before deletion.
+3. They require explicit confirmation.
+4. They rebuild the memory index after deletion.
+5. If an id is ambiguous across project/global partitions, they ask you to specify the partition.
 
 There are intentionally no commands for init, capture, retrieve, validate, reindex, or promote; those flows are automatic/internal.
 
@@ -130,7 +147,7 @@ MVP promotion criteria:
 - `hits >= 3`
 - at least one target `skills` entry
 
-Promotion is checked after a memory is saved and after relevant memories are retrieved. The extension generates proposal files under `promotions/`, but does not modify `SKILL.md` until you run `/skillforge <skill-name>` and approve the patch.
+Promotion is checked after a memory is saved and after relevant memories are retrieved. The extension generates proposal files under `promotions/`, but does not modify `SKILL.md` until you run `/skillforge review <skill-name>` or legacy `/skillforge <skill-name>` and approve the patch.
 
 ## Package layout
 

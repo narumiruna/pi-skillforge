@@ -8,7 +8,7 @@ Pi package for improving agent skills through verified global memory and reviewe
 
 Early implementation. The package supports global-only project-aware memory storage, automatic retrieval injection, agent-mediated automatic capture, and automatic skill patch proposal generation. The only user-facing command reviews pending patches for one skill and applies them after explicit approval.
 
-See [PLAN.md](./PLAN.md) for the product plan and memory model.
+See [PLAN.md](./PLAN.md) for the product plan and memory model, and [docs/runtime-behavior.md](./docs/runtime-behavior.md) for the runtime behavior during normal Pi usage.
 
 ## Install
 

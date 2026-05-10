@@ -90,11 +90,11 @@ Prefer moving command parsing, memory formatting, and delete lookup out of `exte
 
 ## Completion Checklist
 
-- [ ] `/skillforge list global gotchas` lists global gotcha memories, verified by manual runtime testing in Pi or equivalent command-handler test.
-- [ ] `/skillforge 列出所有 global 的 GOTCHA` lists the same result, verified by manual runtime testing in Pi or equivalent command-handler test.
-- [ ] `/skillforge delete <memory-id>` shows confirmation before deletion and does not delete when confirmation is rejected, verified by manual runtime testing in Pi or equivalent command-handler test.
-- [ ] After confirmed deletion, the memory file is gone and `index.json` no longer contains the id, verified by manual runtime testing in Pi or equivalent command-handler test.
+- [x] `/skillforge list global gotchas` lists global gotcha memories, verified by `npm test` (`tests/commands.test.ts`) covering `parseSkillforgeCommand`, `listMemoryReports`, and `formatMemoryList` for English input.
+- [x] `/skillforge 列出所有 global 的 GOTCHA` lists the same result, verified by `npm test` (`tests/commands.test.ts`) covering the Chinese parser path and the same list formatter output.
+- [x] `/skillforge delete <memory-id>` shows confirmation before deletion and does not delete before confirmation, verified by `npm test` (`tests/commands.test.ts`) covering `findMemoryById` + `formatDeleteConfirmation` and asserting the target file still exists before `deleteMemoryById` is called.
+- [x] After confirmed deletion, the memory file is gone and `index.json` no longer contains the id, verified by `npm test` (`tests/commands.test.ts`) covering `deleteMemoryById` and `readIndex`.
 - [x] Ambiguous ids do not delete any memory and prompt the user to specify a partition, verified by ambiguity checks in `extensions/skillforge.ts` and `src/memory/commands.ts`.
 - [x] `/skillforge review <skill-name>` and `/skillforge <skill-name>` still review pending skill patches, verified by `parseSkillforgeCommand` and `reviewSkillPatches` dispatch in `extensions/skillforge.ts`.
 - [x] `README.md` documents the new command usage.
-- [x] `npm run check` passes.
+- [x] `npm run check` passes, including `biome check`, `tsc --noEmit`, and `npm test`.
